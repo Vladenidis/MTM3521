@@ -1,0 +1,183 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def aceleracao(v):
+    if v >= 0:
+        return -g - (k/m)*v**2
+    else:
+        return -g + (k/m)*v**2
+
+m = 0.11
+v_0 = 8
+k = 0.002
+g = 9.8
+t_inicial = 0
+t_final = 1.20
+h = 0.02
+num_intervalos = int((t_final - t_inicial)/h)
+
+#Listas
+tempos = np.linspace(t_inicial,t_final,num_intervalos + 1)
+
+velocidades_taylor2 = np.zeros(num_intervalos + 1)
+velocidades_taylor2[0] = v_0
+
+velocidades_runge_kutta4 = np.zeros(num_intervalos + 1)
+velocidades_runge_kutta4[0] = v_0
+
+# Método Taylor de ordem 2 aqui: v_i+1 = v_i +h*v'(i) + (h**2/2)*v''
+for i in range(num_intervalos):
+  v_i = velocidades_taylor2[i] # velocidade no instante i
+  v_linha_i = aceleracao(v_i)    # aceleração no instante i (v')
+  v_duas_linhas_i = ((-2)*(k/m)*abs(v_i))*aceleracao(v_i) # Aqui (df/dv)*(dv/dt) = (df/dt) = (dv/dt)/dt = v''
+  v_next = v_i + h*v_linha_i + ((h**2)/2)*v_duas_linhas_i
+  velocidades_taylor2[i+1] = v_next
+
+#for i in range(num_intervalos):
+#  print(velocidades_taylor2[i])
+
+# Método Runge-Kutta
+for i in range(num_intervalos):
+  v_i_rk4 = velocidades_runge_kutta4[i]
+  k1 = h*aceleracao(v_i_rk4)
+  k2 = h*aceleracao(v_i_rk4 + k1/2)
+  k3 = h*aceleracao(v_i_rk4 + k2/2)
+  k4 = h*aceleracao(v_i_rk4 + k3)
+  v_next = v_i_rk4 + (1/6)*(k1 + 2*k2 + 2*k3 +k4)
+  velocidades_runge_kutta4[i+1] = v_next
+
+#for i in range(num_intervalos):
+#  print(velocidades_runge_kutta4[i])
+
+plt.figure(figsize=(12,5))
+
+plt.plot(tempos, velocidades_taylor2, label='Taylor', color='blue', linestyle='-')
+plt.plot(tempos, velocidades_runge_kutta4, label='Runge-Kutta', color='red', linestyle='--')
+
+plt.axhline(0, color='gray', linestyle=':', linewidth=1.8, label='V = 0 (Altura Máxima)')
+
+plt.title('Gráfico comparativo de velocidades Taylor vs Runge-Kutta')
+plt.xlabel('Tempo(s)')
+plt.ylabel('Velocidade(m/s)')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+print("\n Tabela comparando as velocidades")
+
+print(f"{'Tempos (s)':<12}{'Velocidades Taylor (m/s)':<28} {'Velocidades RK (m/s)':<25}")
+for i in range(num_intervalos + 1):
+  print(f"{tempos[i]:<12.2f}{velocidades_taylor2[i]:<28.20f}{velocidades_runge_kutta4[i]:<25.20f}")
+print('*'*80)
+# Estimativa do tempo quando v = 0 m/s
+for i in range(num_intervalos):
+    if velocidades_taylor2[i] <= 0:
+        t_1 = tempos[i - 1]         # Tempo antes de zerar a velocidade
+        v_1 = velocidades_taylor2[i - 1] # velocidade no ponto t_1
+        t_2 = tempos[i]             # Tempo depois de zerar a velocidade
+        v_2 = velocidades_taylor2[i] # Velocidade em t_2
+        # v = a*t + b       t = (v - b)/a
+        # v_1 = a*t_1 + b
+        # v_2 = a*t_2 + b
+        a = (v_2 - v_1)/(t_2 - t_1)
+        b = v_1 - a*t_1
+        t_taylor_v0 = (0 - b)/a
+        print(f'Para o método de Taylor de ordem 2, a velocidade no instante '
+              f'{tempos[i]:.2f} segundo(s) deixa de ser positiva.\n'
+              f'Assim, estima-se que em {t_taylor_v0:.20f} segundos o objeto atingirá a altura máxima.')
+        break
+print('*'*80)
+# Estimativa do tempo quando v = 0 m/s
+for i in range(num_intervalos):
+    if velocidades_runge_kutta4[i] <= 0:
+        t_1 = tempos[i - 1]         # Tempo antes de zerar a velocidade
+        v_1 = velocidades_runge_kutta4[i - 1] # velocidade no ponto t_1
+        t_2 = tempos[i]             # Tempo depois de zerar a velocidade
+        v_2 = velocidades_runge_kutta4[i] # Velocidade em t_2
+        # v = a*t + b       t = (v - b)/a
+        # v_1 = a*t_1 + b
+        # v_2 = a*t_2 + b
+        a = (v_2 - v_1)/(t_2 - t_1)
+        b = v_1 - a*t_1
+        t_rk_v0 = (0 - b)/a
+        print(f'Para o método de Runge-Kutta de ordem 4, a velocidade no instante '
+              f'{tempos[i]:.2f} segundo(s) deixa de ser positiva.\n'
+              f'Assim, estima-se que em {t_rk_v0:.20f} segundos o objeto atingirá a altura máxima.')
+        break
+print('*'*80)
+
+# Preparando listas com as velocidades na subida até v=0
+vel_subida_taylor = []
+tempos_subida_taylor = []
+for i in range(len(velocidades_taylor2)):
+  if velocidades_taylor2[i] > 0:
+    vel_subida_taylor.append(velocidades_taylor2[i])
+    tempos_subida_taylor.append(tempos[i])
+  else:
+    vel_subida_taylor.append(0)
+    tempos_subida_taylor.append(t_taylor_v0)
+    break
+
+vel_subida_rk = []
+tempos_subida_rk = []
+for i in range(len(velocidades_runge_kutta4)):
+  if velocidades_runge_kutta4[i] > 0:
+    vel_subida_rk.append(velocidades_runge_kutta4[i])
+    tempos_subida_rk.append(tempos[i])
+  else:
+    vel_subida_rk.append(0)
+    tempos_subida_rk.append(t_rk_v0)
+    break
+
+
+#Usando a Regra do Trapezio: I = (h/2)*{v(t_0)+ 2*[(v(t_1)+...+v(t_n1)] + v(t_n)}
+
+n_taylor = len(vel_subida_taylor) # 41 números, dá pra aplicar Trapézio ou Simpson
+n_rk = len(vel_subida_rk) # 41 números também
+
+# Nota: como foi adicionado o último ponto com velocidade igual a zero, os intervalos não são iguais para a lista tempos_subida
+
+altura_trap_taylor = 0
+for i in range(n_taylor - 1):
+  delta_t = (tempos_subida_taylor[i+1] - tempos_subida_taylor[i])
+  area_trap_t = (delta_t/2)*(vel_subida_taylor[i] + vel_subida_taylor[i+1])
+  altura_trap_taylor += area_trap_t
+print(f"Altura máxima (Taylor, Trapézio) = {altura_trap_taylor:.20f}")
+print('*'*80)
+altura_trap_rk = 0
+for i in range(n_rk -1):
+  delta_t = (tempos_subida_rk[i+1] - tempos_subida_rk[i])
+  area_trap_rk = (delta_t/2)*(vel_subida_rk[i] + vel_subida_rk[i+1])
+  altura_trap_rk += area_trap_rk
+print(f"Altura máxima (Runge-Kutta, Trapézio) = {altura_trap_rk:.20f}")
+print('*'*80)
+
+# Usando Simpson => I = (h/3)*(v(t_0)+4*v(t_1)+2*v(t_2)+...+4*v(t_n-1)+v(t_n))
+soma_simp_taylor = 0
+num_subint_taylor = n_taylor -1
+if num_subint_taylor % 2 != 0:
+  print("É necessário um número par de intervalos. Ficaremos apenas com a Regra do Trapézio.")
+else:
+  soma_simp_taylor = vel_subida_taylor[0] + vel_subida_taylor[-1]
+  for i in range(1, n_taylor -1):
+    if i % 2 == 0:
+      soma_simp_taylor += 2*(vel_subida_taylor[i])
+    else:
+      soma_simp_taylor += 4*(vel_subida_taylor[i])
+altura_simp_taylor = (h/3)*soma_simp_taylor
+print(f"Altura máxima (Taylor, Simpson) = {altura_simp_taylor:.20f}")
+print('*'*80)
+soma_simp_rk = 0
+num_subint_rk = n_rk - 1
+
+if num_subint_rk % 2 != 0:
+  print("É necessário um número par de intervalos. Ficaremos apenas com a Regra do Trapézio.")
+else:
+  soma_simp_rk = vel_subida_rk[0] + vel_subida_rk[-1]
+  for i in range(1, n_rk - 1):
+    if i % 2 == 0:
+      soma_simp_rk += 2*(vel_subida_rk[i])
+    else:
+      soma_simp_rk += 4*(vel_subida_rk[i])
+altura_simp_rk = (h/3)*soma_simp_rk
+print(f"Altura máxima (Runge-Kutta, Simpson) = {altura_simp_rk:.20f}")
